@@ -3,13 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"gopkg.in/BlueDragonX/go-log.v0"
+	kitlog "github.com/go-kit/kit/log"
 	"os"
 	"os/signal"
 	"syscall"
 )
-
-var logger *log.Logger = log.NewOrExit()
 
 func main() {
 	var level, listen, backend string
@@ -18,25 +16,27 @@ func main() {
 	flags.StringVar(&backend, "backend", "", "The address of the backend to forward to.")
 	flags.StringVar(&level, "level", "info", "The logging level.")
 	flags.Parse(os.Args[1:])
-	logger.SetLevel(log.NewLevel(level))
+
+	w := kitlog.NewSyncWriter(os.Stderr)
+	logger := kitlog.NewLogfmtLogger(w)
 
 	if listen == "" || backend == "" {
 		fmt.Fprintln(os.Stderr, "listen and backend options required")
 		os.Exit(1)
 	}
 
-	p := Proxy{Listen: listen, Backend: backend}
+	p := Proxy{Logger: logger, Listen: listen, Backend: backend}
 
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigs
 		if err := p.Close(); err != nil {
-			logger.Fatal(err.Error())
+			logger.Log("err", err)
 		}
 	}()
 
 	if err := p.Run(); err != nil {
-		logger.Fatal(err.Error())
+		logger.Log("err", err)
 	}
 }

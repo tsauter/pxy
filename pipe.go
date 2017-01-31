@@ -10,8 +10,7 @@ func Pipe(a, b net.Conn) error {
 	done := make(chan error, 1)
 
 	cp := func(r, w net.Conn) {
-		n, err := io.Copy(r, w)
-		logger.Debugf("copied %d bytes from %s to %s", n, r.RemoteAddr(), w.RemoteAddr())
+		_, err := io.Copy(r, w)
 		done <- err
 	}
 

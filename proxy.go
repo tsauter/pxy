@@ -1,12 +1,14 @@
 package main
 
 import (
+	kitlog "github.com/go-kit/kit/log"
 	"net"
 	"sync"
 )
 
 // Proxy connections from Listen to Backend.
 type Proxy struct {
+	Logger   kitlog.Logger
 	Listen   string
 	Backend  string
 	listener net.Listener
@@ -40,16 +42,16 @@ func (p *Proxy) Close() error {
 
 func (p *Proxy) handle(upConn net.Conn) {
 	defer upConn.Close()
-	logger.Infof("accepted: %s", upConn.RemoteAddr())
+	p.Logger.Log("connection", upConn.RemoteAddr())
 	downConn, err := net.Dial("tcp", p.Backend)
 	if err != nil {
-		logger.Errorf("unable to connect to %s: %s", p.Backend, err)
+		p.Logger.Log("msg", "unable to connect", "backend", p.Backend, "err", err)
 		return
 	}
 	defer downConn.Close()
 	if err := Pipe(upConn, downConn); err != nil {
-		logger.Errorf("pipe failed: %s", err)
+		p.Logger.Log("msg", "pipe failed", "err", err)
 	} else {
-		logger.Infof("disconnected: %s", upConn.RemoteAddr())
+		p.Logger.Log("msg", "disconnected", "client", upConn.RemoteAddr())
 	}
 }
